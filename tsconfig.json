@@ -1,0 +1,27 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [
+    "alchemy.run.ts",
+    "types/**/*.ts",
+    ".astro/types.d.ts",
+    "**/*"
+  ],
+  "exclude": [
+    "dist"
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "types": [
+      "node",
+      "@cloudflare/workers-types",
+      "./types/env.d.ts"
+    ],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
+  }
+}

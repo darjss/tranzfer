@@ -1,0 +1,28 @@
+---
+import AuthForm from "@/components/AuthForm";
+import SiteHeader from "@/components/SiteHeader.astro";
+import Layout from "@/layouts/Layout.astro";
+
+const nextParam = Astro.url.searchParams.get("next");
+const planParam = Astro.url.searchParams.get("plan");
+const user = Astro.locals.user;
+const nextPath = nextParam?.startsWith("/") ? nextParam : "/account/billing";
+const plan =
+  planParam === "starter" || planParam === "pro" ? planParam : null;
+
+if (user) {
+  return Astro.redirect(nextPath || "/account/billing");
+}
+---
+
+<Layout description="Sign in to continue into billing and Polar checkout." title="Sign In | Threadline Starter">
+  <div class="min-h-[100dvh] bg-[linear-gradient(180deg,#f5f1e8_0%,#f8f7f4_44%,#ffffff_100%)] text-zinc-950">
+    <SiteHeader currentPath="/auth/sign-in" user={user} />
+
+    <main class="px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <div class="mx-auto max-w-[720px]">
+        <AuthForm client:load mode="sign-in" nextPath={nextPath} plan={plan} />
+      </div>
+    </main>
+  </div>
+</Layout>

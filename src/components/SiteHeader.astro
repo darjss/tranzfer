@@ -1,0 +1,48 @@
+---
+const {
+  currentPath = "/",
+  user = null,
+} = Astro.props;
+
+const accountHref = user ? "/account/billing" : "/auth/sign-in";
+const accountLabel = user ? "Billing" : "Sign in";
+---
+
+<header class="border-b border-zinc-200/70">
+  <div class="mx-auto flex max-w-[1120px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+    <a class="flex items-center gap-3" href="/">
+      <div class="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-zinc-300 bg-white text-sm font-semibold tracking-[0.22em] text-zinc-900 shadow-[0_18px_40px_-26px_rgba(24,24,27,0.28)]">
+        TL
+      </div>
+      <div>
+        <div class="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+          Threadline
+        </div>
+        <div class="text-sm text-zinc-600">Astro starter for subscription products</div>
+      </div>
+    </a>
+
+    <nav class="flex items-center gap-3">
+      <a
+        class:list={[
+          "text-sm transition-colors hover:text-zinc-950",
+          currentPath === "/pricing" ? "text-zinc-950" : "text-zinc-600",
+        ]}
+        href="/pricing"
+      >
+        Pricing
+      </a>
+      <a
+        class:list={[
+          "rounded-2xl border px-4 py-2.5 text-sm font-medium transition-all",
+          currentPath === accountHref
+            ? "border-zinc-900 bg-zinc-950 text-zinc-50"
+            : "border-zinc-300 bg-white text-zinc-900 hover:border-zinc-400",
+        ]}
+        href={accountHref}
+      >
+        {accountLabel}
+      </a>
+    </nav>
+  </div>
+</header>
