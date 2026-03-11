@@ -1,12 +1,13 @@
 import crypto from "node:crypto";
-import { rm, readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import alchemy from "alchemy";
 import { GitHubComment } from "alchemy/github";
 import { CloudflareStateStore } from "alchemy/state";
-import { Astro, D1Database, KVNamespace, R2Bucket } from "alchemy/cloudflare";
+import { Astro, D1Database, KVNamespace, R2Bucket, Worker } from "alchemy/cloudflare";
 
-const APP_NAME = "saas-starter";
+const APP_NAME = "tranzfer";
 
 type EncryptedSecret = {
   ciphertext: string;
@@ -32,6 +33,10 @@ function isLocalDevCommand() {
 
 function getAlchemyStage() {
   return process.env.ALCHEMY_STAGE || process.env.USER || process.env.USERNAME || "local";
+}
+
+function normalizeStage(stage: string) {
+  return stage.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 }
 
 function collectEncryptedSecrets(value: unknown, secrets: EncryptedSecret[] = []) {
@@ -149,6 +154,12 @@ async function resetIncompatibleLocalState() {
 
 await resetIncompatibleLocalState();
 
+const stage = normalizeStage(getAlchemyStage());
+const isProductionStage = stage === "production";
+const isPreviewDeployment = Boolean(process.env.PULL_REQUEST);
+const migrationsDir = fileURLToPath(
+  new URL("./drizzle/migrations", import.meta.url),
+);
 const app = await alchemy(APP_NAME, {
   stateStore: process.env.ALCHEMY_STATE_TOKEN
     ? (scope) => new CloudflareStateStore(scope)
@@ -156,69 +167,130 @@ const app = await alchemy(APP_NAME, {
 });
 
 const db = await D1Database("db", {
-  name: "saas-starter-db",
-  migrationsDir: "./drizzle/migrations",
+  adopt: isProductionStage,
+  migrationsDir,
   migrationsTable: "drizzle_migrations",
+  name: isProductionStage ? "tranzfer-db" : `tranzfer-${stage}-db`,
 });
 
 const bucket = await R2Bucket("bucket", {
-  name: "saas-starter-bucket",
+  adopt: isProductionStage,
+  cors: [
+    {
+      allowed: {
+        headers: ["content-type", "origin"],
+        methods: ["GET", "PUT", "POST", "HEAD"],
+        origins: isProductionStage
+          ? ["https://tranzfer.app", "https://www.tranzfer.app"]
+          : ["http://127.0.0.1:4321", "http://localhost:4321"],
+      },
+      exposeHeaders: ["etag"],
+      maxAgeSeconds: 3600,
+    },
+  ],
+  lifecycle: [
+    {
+      abortMultipartUploadsTransition: {
+        condition: {
+          maxAge: 172800,
+          type: "Age",
+        },
+      },
+      conditions: {
+        prefix: "",
+      },
+      enabled: true,
+      id: "abort-stale-multipart-uploads",
+    },
+  ],
+  name: isProductionStage ? "tranzfer-files" : `tranzfer-${stage}-files`,
 });
 
 const cache = await KVNamespace("cache", {
-  title: "saas-starter-cache",
+  adopt: isProductionStage,
+  title: isProductionStage ? "tranzfer-cache" : `tranzfer-${stage}-cache`,
 });
 
 const session = await KVNamespace("session", {
-  title: "saas-starter-session",
+  adopt: isProductionStage,
+  title: isProductionStage ? "tranzfer-session" : `tranzfer-${stage}-session`,
 });
 
+const sharedBindings = {
+  BETTER_AUTH_SECRET: alchemy.secret(
+    process.env.BETTER_AUTH_SECRET,
+    "BETTER_AUTH_SECRET",
+  ),
+  BUCKET: bucket,
+  CACHE: cache,
+  DB: db,
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
+  GOOGLE_CLIENT_SECRET: alchemy.secret(
+    process.env.GOOGLE_CLIENT_SECRET,
+    "GOOGLE_CLIENT_SECRET",
+  ),
+  POLAR_ACCESS_TOKEN: alchemy.secret(
+    process.env.POLAR_ACCESS_TOKEN,
+    "POLAR_ACCESS_TOKEN",
+  ),
+  POLAR_WEBHOOK_SECRET: alchemy.secret(
+    process.env.POLAR_WEBHOOK_SECRET,
+    "POLAR_WEBHOOK_SECRET",
+  ),
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID || "",
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID || "",
+  R2_BUCKET_NAME: bucket.name,
+  R2_SECRET_ACCESS_KEY: alchemy.secret(
+    process.env.R2_SECRET_ACCESS_KEY,
+    "R2_SECRET_ACCESS_KEY",
+  ),
+  SESSION: session,
+  ...(process.env.BETTER_AUTH_URL
+    ? { BETTER_AUTH_URL: process.env.BETTER_AUTH_URL }
+    : {}),
+  ...(process.env.POLAR_SERVER
+    ? { POLAR_SERVER: process.env.POLAR_SERVER }
+    : {}),
+  ...(process.env.POLAR_PRODUCT_PRO_ID
+    ? { POLAR_PRODUCT_PRO_ID: process.env.POLAR_PRODUCT_PRO_ID }
+    : {}),
+  ...(process.env.TRUSTED_ORIGINS
+    ? { TRUSTED_ORIGINS: process.env.TRUSTED_ORIGINS }
+    : {}),
+} as const;
+
 export const worker = await Astro("website", {
-  bindings: {
-    DB: db,
-    BUCKET: bucket,
-    CACHE: cache,
-    SESSION: session,
-    BETTER_AUTH_SECRET: alchemy.secret(
-      process.env.BETTER_AUTH_SECRET,
-      "BETTER_AUTH_SECRET",
-    ),
-    ...(process.env.BETTER_AUTH_URL
-      ? { BETTER_AUTH_URL: process.env.BETTER_AUTH_URL }
-      : {}),
-    ...(process.env.TRUSTED_ORIGINS
-      ? { TRUSTED_ORIGINS: process.env.TRUSTED_ORIGINS }
-      : {}),
-    POLAR_ACCESS_TOKEN: alchemy.secret(
-      process.env.POLAR_ACCESS_TOKEN,
-      "POLAR_ACCESS_TOKEN",
-    ),
-    POLAR_WEBHOOK_SECRET: alchemy.secret(
-      process.env.POLAR_WEBHOOK_SECRET,
-      "POLAR_WEBHOOK_SECRET",
-    ),
-    ...(process.env.POLAR_SERVER
-      ? { POLAR_SERVER: process.env.POLAR_SERVER }
-      : {}),
-    ...(process.env.POLAR_PRODUCT_STARTER_ID
-      ? { POLAR_PRODUCT_STARTER_ID: process.env.POLAR_PRODUCT_STARTER_ID }
-      : {}),
-    ...(process.env.POLAR_PRODUCT_PRO_ID
-      ? { POLAR_PRODUCT_PRO_ID: process.env.POLAR_PRODUCT_PRO_ID }
-      : {}),
-  },
+  adopt: isProductionStage,
+  bindings: sharedBindings,
   compatibilityDate: "2026-03-09",
   compatibilityFlags: ["nodejs_als"],
   dev: {
     command: "astro dev --host 127.0.0.1 --port 4321",
   },
+  domains: isProductionStage ? ["tranzfer.app"] : undefined,
   observability: {
     enabled: true,
   },
-  url: true,
+  url: !isProductionStage || isPreviewDeployment,
+});
+
+export const maintenanceWorker = await Worker("maintenance", {
+  adopt: isProductionStage,
+  bindings: {
+    BUCKET: bucket,
+    DB: db,
+  },
+  compatibility: "node",
+  crons: ["*/15 * * * *"],
+  entrypoint: "./src/maintenance/worker.ts",
+  observability: {
+    enabled: true,
+  },
+  url: !isProductionStage || isPreviewDeployment,
 });
 
 console.log({
+  maintenance: maintenanceWorker.url,
   url: worker.url,
 });
 
@@ -226,20 +298,16 @@ if (process.env.PULL_REQUEST) {
   const previewUrl = worker.url;
 
   await GitHubComment("pr-preview-comment", {
-    owner: process.env.GITHUB_REPOSITORY_OWNER || "your-username",
-    repository: process.env.GITHUB_REPOSITORY_NAME || "saas-starter",
-    issueNumber: Number(process.env.PULL_REQUEST),
     body: `
-## 🚀 Preview Deployed
-
-Your preview is ready!
+## Preview Ready
 
 **Preview URL:** ${previewUrl}
 
-This preview was built from commit ${process.env.GITHUB_SHA}
-
----
-<sub>🤖 This comment will be updated automatically when you push new commits to this PR.</sub>`,
+Built from commit ${process.env.GITHUB_SHA}
+`,
+    issueNumber: Number(process.env.PULL_REQUEST),
+    owner: process.env.GITHUB_REPOSITORY_OWNER || "your-username",
+    repository: process.env.GITHUB_REPOSITORY_NAME || "tranzfer",
   });
 }
 

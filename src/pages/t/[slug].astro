@@ -1,0 +1,70 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import { formatBytes } from "@/lib/billing/plans";
+import { getReadyTransferBySlug } from "@/server/lib/transfers";
+
+const transferSlug = Astro.params.slug || "";
+const item = await getReadyTransferBySlug(transferSlug);
+
+if (!item) {
+  return new Response("Transfer not found.", {
+    status: 404,
+  });
+}
+---
+
+<Layout
+  description={`Download files from ${item.owner.name || "a Tranzfer sender"}.`}
+  title={`${item.title || "Shared transfer"} | Tranzfer`}
+>
+  <div class="min-h-[100dvh]">
+    <SiteHeader currentPath="" user={null} />
+
+    <main class="px-5 pb-16 pt-28 sm:px-8 lg:pt-32">
+      <div class="mx-auto max-w-[920px] animate-fade-up rounded-2xl border border-white/[0.06] bg-white/[0.03] p-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_28px_75px_-30px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:p-9">
+        <div class="font-mono text-[0.68rem] font-medium uppercase tracking-[0.28em] text-zinc-600">
+          Shared transfer
+        </div>
+        <h1 class="mt-5 text-3xl font-semibold tracking-[-0.03em] text-zinc-100 sm:text-4xl">
+          {item.title || "Download files"}
+        </h1>
+        <p class="mt-4 text-base leading-relaxed text-zinc-400">
+          Sent by <span class="text-zinc-300">{item.owner.name || item.owner.email}</span>. This link stays active until{" "}
+          <span class="text-zinc-300">{item.expiresAt.toLocaleString()}</span>.
+        </p>
+
+        {item.message ? (
+          <div class="mt-6 rounded-xl border border-copper/15 bg-copper/[0.04] px-5 py-4 text-sm leading-relaxed text-copper-dim">
+            {item.message}
+          </div>
+        ) : null}
+
+        <div class="mt-8 grid gap-3">
+          {item.files.map((file) => (
+            <article class="rounded-xl border border-white/[0.06] bg-white/[0.03] px-5 py-5 transition-all duration-300 hover:border-white/[0.1]">
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 class="text-lg font-semibold tracking-tight text-zinc-100">
+                    {file.originalName}
+                  </h2>
+                  <div class="mt-1.5 text-sm text-zinc-500">
+                    {formatBytes(file.sizeBytes)}
+                    {file.contentType ? ` \u00B7 ${file.contentType}` : ""}
+                  </div>
+                </div>
+
+                <a
+                  class="rounded-xl bg-copper px-5 py-2.5 text-sm font-medium text-zinc-950 shadow-[0_0_24px_rgba(200,121,65,0.15)] transition-all duration-300 hover:bg-copper-light hover:shadow-[0_0_32px_rgba(200,121,65,0.25)] active:scale-[0.98]"
+                  href={`/api/public/transfers/${item.slug}/files/${file.id}/download`}
+                >
+                  Download
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </main>
+  </div>
+</Layout>

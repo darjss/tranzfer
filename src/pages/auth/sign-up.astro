@@ -6,21 +6,25 @@ import Layout from "@/layouts/Layout.astro";
 const nextParam = Astro.url.searchParams.get("next");
 const planParam = Astro.url.searchParams.get("plan");
 const user = Astro.locals.user;
-const nextPath = nextParam?.startsWith("/") ? nextParam : "/account/billing";
-const plan =
-  planParam === "starter" || planParam === "pro" ? planParam : null;
+const nextPath = nextParam?.startsWith("/") ? nextParam : "/account/transfers";
+const plan = planParam === "pro" ? "pro" : null;
 
 if (user) {
-  return Astro.redirect(nextPath || "/account/billing");
+  return Astro.redirect(nextPath || "/account/transfers");
 }
 ---
 
-<Layout description="Create an account before starting Polar checkout." title="Sign Up | Threadline Starter">
-  <div class="min-h-[100dvh] bg-[linear-gradient(180deg,#f5f1e8_0%,#f8f7f4_44%,#ffffff_100%)] text-zinc-950">
+<Layout description="Establish your Tranzfer protocol credentials." title="System Registration | Tranzfer">
+  <div class="min-h-[100dvh] relative flex flex-col justify-center selection:bg-electric selection:text-white">
+    <!-- Abstract background -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-[-1]">
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full bg-electric/10 blur-[100px] animate-pulse-soft"></div>
+    </div>
+
     <SiteHeader currentPath="/auth/sign-up" user={user} />
 
-    <main class="px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <div class="mx-auto max-w-[720px]">
+    <main class="w-full px-6 pt-32 pb-20 relative z-10">
+      <div class="mx-auto max-w-[500px] animate-fade-up">
         <AuthForm client:load mode="sign-up" nextPath={nextPath} plan={plan} />
       </div>
     </main>

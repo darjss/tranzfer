@@ -1,7 +1,5 @@
 import { createForm } from "@tanstack/solid-form";
 import { For, Show, createSignal } from "solid-js";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { type PaidPlanKey } from "@/lib/billing/plans";
 import {
@@ -22,8 +20,17 @@ type AuthFormProps = {
   plan: PaidPlanKey | null;
 };
 
+function getAuthRedirectPath(nextPath: string, plan: PaidPlanKey | null) {
+  if (plan === "pro") {
+    return `/account/billing?checkout=pro&next=${encodeURIComponent(nextPath)}`;
+  }
+
+  return nextPath || "/account/transfers";
+}
+
 export default function AuthForm(props: AuthFormProps) {
   const [submitError, setSubmitError] = createSignal<string | null>(null);
+  const [isSocialLoading, setIsSocialLoading] = createSignal(false);
 
   const form = createForm(() => ({
     defaultValues: {
@@ -37,6 +44,7 @@ export default function AuthForm(props: AuthFormProps) {
       try {
         if (props.mode === "sign-up") {
           const result = await authClient.signUp.email({
+            callbackURL: getAuthRedirectPath(props.nextPath, props.plan),
             email: value.email.trim(),
             name: value.name.trim(),
             password: value.password,
@@ -47,6 +55,7 @@ export default function AuthForm(props: AuthFormProps) {
           }
         } else {
           const result = await authClient.signIn.email({
+            callbackURL: getAuthRedirectPath(props.nextPath, props.plan),
             email: value.email.trim(),
             password: value.password,
           });
@@ -56,26 +65,12 @@ export default function AuthForm(props: AuthFormProps) {
           }
         }
 
-        if (props.plan) {
-          const checkout = await authClient.checkout({
-            slug: props.plan,
-          });
-
-          if (checkout.error) {
-            throw new Error(checkout.error.message || "Could not start checkout.");
-          }
-
-          const url = checkout.data?.url;
-
-          if (!url) {
-            throw new Error("Polar checkout did not return a redirect URL.");
-          }
-
-          window.location.assign(url);
+        if (props.plan === "pro") {
+          window.location.assign("/account/billing?checkout=pro");
           return;
         }
 
-        window.location.assign(props.nextPath || "/account/billing");
+        window.location.assign(props.nextPath || "/account/transfers");
       } catch (error) {
         setSubmitError(getAuthSubmitErrorMessage(error, props.mode));
       }
@@ -86,20 +81,60 @@ export default function AuthForm(props: AuthFormProps) {
     },
   }));
 
+  async function handleGoogleAuth() {
+    setSubmitError(null);
+    setIsSocialLoading(true);
+
+    try {
+      const result = await authClient.signIn.social({
+        callbackURL: getAuthRedirectPath(props.nextPath, props.plan),
+        provider: "google",
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message || "Could not start Google sign-in.");
+      }
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Could not start Google sign-in.",
+      );
+      setIsSocialLoading(false);
+    }
+  }
+
   return (
-    <div class="rounded-[2rem] border border-zinc-200 bg-white/92 p-6 shadow-[0_28px_75px_-42px_rgba(24,24,27,0.22)] sm:p-8">
-      <div class="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-        {props.mode === "sign-up" ? "Sign up" : "Sign in"}
+    <div class="glass-panel rounded-[2rem] p-8 sm:p-10 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-32 h-32 bg-electric/10 rounded-full blur-[40px] pointer-events-none"></div>
+
+      <div class="font-mono text-[0.65rem] font-bold uppercase tracking-[0.3em] text-zinc-500 mb-2">
+        {props.mode === "sign-up" ? "System Registration" : "Terminal Access"}
       </div>
-      <h1 class="mt-4 text-3xl font-semibold tracking-[-0.05em] text-zinc-950 sm:text-4xl">
+      <h1 class="text-3xl font-medium tracking-tight text-white mb-3">
         {getAuthHeading(props.mode)}
       </h1>
-      <p class="mt-4 max-w-xl text-base leading-relaxed text-zinc-600">
+      <p class="text-sm leading-relaxed text-zinc-400 mb-8 font-light">
         {getAuthSubtitle(props.mode, props.plan)}
       </p>
 
+      <div class="grid gap-4 mb-8">
+        <button
+          class="relative w-full rounded-full border border-white/10 bg-white/5 py-4 text-[0.75rem] font-mono uppercase tracking-widest text-zinc-300 transition-all duration-300 hover:bg-white/10 hover:border-white/20 disabled:opacity-50"
+          disabled={isSocialLoading()}
+          onClick={() => void handleGoogleAuth()}
+          type="button"
+        >
+          {isSocialLoading() ? "AUTHORIZING..." : "CONTINUE WITH GOOGLE"}
+        </button>
+
+        <div class="flex items-center gap-4 py-2">
+          <div class="h-px flex-1 bg-gradient-to-r from-transparent to-white/10"></div>
+          <div class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-500">OR OVERRIDE</div>
+          <div class="h-px flex-1 bg-gradient-to-l from-transparent to-white/10"></div>
+        </div>
+      </div>
+
       <form
-        class="mt-8 grid gap-4"
+        class="grid gap-6"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
@@ -110,16 +145,17 @@ export default function AuthForm(props: AuthFormProps) {
           <form.Field name="name">
             {(field) => (
               <label class="grid gap-2">
-                <span class="text-sm font-medium text-zinc-800">Name</span>
-                <Input
+                <span class="text-[0.7rem] font-mono uppercase tracking-widest text-zinc-500">Operator Name</span>
+                <input
                   autocomplete="name"
+                  class="w-full bg-transparent border-b border-white/10 py-2 text-white placeholder:text-zinc-600 focus:outline-none focus:border-electric transition-colors"
                   minlength={1}
                   onBlur={field().handleBlur}
                   onInput={(event) => {
                     setSubmitError(null);
                     field().handleChange(event.currentTarget.value);
                   }}
-                  placeholder="North Pier"
+                  placeholder="Studio North"
                   required
                   value={field().state.value}
                 />
@@ -129,7 +165,7 @@ export default function AuthForm(props: AuthFormProps) {
                     getFieldErrorMessage(field().state.meta.errors)
                   }
                 >
-                  <div class="text-sm text-red-700">
+                  <div class="text-[0.7rem] font-mono text-red-400 mt-1">
                     {getFieldErrorMessage(field().state.meta.errors)}
                   </div>
                 </Show>
@@ -143,13 +179,14 @@ export default function AuthForm(props: AuthFormProps) {
             <form.Field name={fieldConfig.name}>
               {(field) => (
                 <label class="grid gap-2">
-                  <span class="text-sm font-medium text-zinc-800">{fieldConfig.label}</span>
-                  <Input
+                  <span class="text-[0.7rem] font-mono uppercase tracking-widest text-zinc-500">{fieldConfig.label}</span>
+                  <input
                     autocomplete={
                       fieldConfig.name === "password" && props.mode === "sign-up"
                         ? "new-password"
                         : fieldConfig.autoComplete
                     }
+                    class="w-full bg-transparent border-b border-white/10 py-2 text-white placeholder:text-zinc-600 focus:outline-none focus:border-electric transition-colors"
                     minlength={fieldConfig.minlength}
                     onBlur={field().handleBlur}
                     onInput={(event) => {
@@ -167,7 +204,7 @@ export default function AuthForm(props: AuthFormProps) {
                       getFieldErrorMessage(field().state.meta.errors)
                     }
                   >
-                    <div class="text-sm text-red-700">
+                    <div class="text-[0.7rem] font-mono text-red-400 mt-1">
                       {getFieldErrorMessage(field().state.meta.errors)}
                     </div>
                   </Show>
@@ -184,21 +221,30 @@ export default function AuthForm(props: AuthFormProps) {
           })}
         >
           {(state) => (
-            <Button
-              class="mt-2 rounded-2xl"
+            <button
+              class="mt-4 relative w-full rounded-full bg-white py-4 text-[0.8rem] font-bold uppercase tracking-[0.15em] text-zinc-950 transition-all duration-300 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50 hover:scale-[1.01] active:scale-95"
               disabled={!state().canSubmit || state().isSubmitting}
               type="submit"
             >
-              {getAuthSubmitLabel(props.mode, state().isSubmitting, props.plan)}
-            </Button>
+              {getAuthSubmitLabel(props.mode, state().isSubmitting, props.plan).toUpperCase()}
+            </button>
           )}
         </form.Subscribe>
 
         <Show when={submitError()}>
-          <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {submitError()}
+          <div class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[0.75rem] font-mono text-red-400 mt-2 text-center">
+            ERR: {submitError()}
           </div>
         </Show>
+        
+        <div class="text-center mt-6">
+          <a
+            href={props.mode === "sign-in" ? "/auth/sign-up" : "/auth/sign-in"}
+            class="text-[0.7rem] font-mono uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
+          >
+            {props.mode === "sign-in" ? "CREATE NEW CREDENTIALS" : "RETURN TO LOGIN"}
+          </a>
+        </div>
       </form>
     </div>
   );

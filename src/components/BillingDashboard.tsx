@@ -1,137 +1,50 @@
-import { useQuery } from "@tanstack/solid-query";
-import { For, Show, Suspense, createMemo, createSignal } from "solid-js";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import SolidQueryProvider from "@/components/SolidQueryProvider";
+import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { authClient } from "@/lib/auth-client";
-import {
-  exceedsPlanLimits,
-  getActivePlanInfo,
-  getUpgradeMessage,
-  isUpgradeAvailable,
-  type BillingProductIds,
-} from "@/lib/billing/polar";
-import {
-  PAID_PLAN_KEYS,
-  getPlanDefinition,
-  type PaidPlanKey,
-} from "@/lib/billing/plans";
-import { customerStateQueryOptions } from "@/lib/queries/billing";
-import { cn } from "@/lib/utils";
+import { getPlanDefinition, type PaidPlanKey, type PlanKey, formatBytes } from "@/lib/billing/plans";
 
 type BillingDashboardProps = {
-  productIds: BillingProductIds;
+  autoCheckout: boolean;
+  currentPlan: PlanKey;
   userEmail: string;
   userName: string | null;
 };
 
-function BillingDashboardContent(props: BillingDashboardProps) {
+export default function BillingDashboard(props: BillingDashboardProps) {
   const [error, setError] = createSignal<string | null>(null);
   const [isManaging, setIsManaging] = createSignal(false);
-  const [activeAction, setActiveAction] = createSignal<string | null>(null);
-  const [workspaceUsage, setWorkspaceUsage] = createSignal(1);
-  const [seatUsage, setSeatUsage] = createSignal(3);
-  const customerStateQuery = useQuery(() =>
-    customerStateQueryOptions("billing-dashboard", true),
-  );
-
-  const planInfo = createMemo(() =>
-    getActivePlanInfo(customerStateQuery.data ?? null, props.productIds),
-  );
-  const currentPlan = createMemo(() => planInfo().currentPlan);
-  const currentPlanDefinition = createMemo(() => getPlanDefinition(currentPlan()));
-  const usage = createMemo(() => ({
-    seats: seatUsage(),
-    workspaces: workspaceUsage(),
-  }));
-  const usageControls = [
-    {
-      description: () => `${workspaceUsage()} active workspaces`,
-      label: "Workspaces",
-      max: 20,
-      min: 0,
-      setValue: setWorkspaceUsage,
-      value: workspaceUsage,
-    },
-    {
-      description: () => `${seatUsage()} active seats`,
-      label: "Seats",
-      max: 30,
-      min: 0,
-      setValue: setSeatUsage,
-      value: seatUsage,
-    },
-  ] as const;
-  const isOverLimit = createMemo(() =>
-    exceedsPlanLimits(currentPlan(), usage()),
-  );
-  const upgradeMessage = createMemo(() =>
-    getUpgradeMessage(currentPlan(), usage()),
-  );
-  const currentPeriodEnd = createMemo(() => {
-    const periodEnd = planInfo().subscription?.currentPeriodEnd;
-
-    if (!periodEnd) {
+  const [isCheckouting, setIsCheckouting] = createSignal(false);
+  const planDefinition = createMemo(() => getPlanDefinition(props.currentPlan));
+  const upgradePlan = createMemo<PaidPlanKey | null>(() => {
+    if (props.currentPlan === "pro") {
       return null;
     }
-
-    return new Date(periodEnd).toLocaleDateString("en-US");
+    return "pro";
   });
 
   async function handleCheckout(plan: PaidPlanKey) {
     setError(null);
-    setActiveAction(plan);
-
+    setIsCheckouting(true);
     try {
-      const result = await authClient.checkout({
-        slug: plan,
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message || "Could not start checkout.");
-      }
-
-      const url = result.data?.url;
-
-      if (!url) {
-        throw new Error("Polar checkout did not return a redirect URL.");
-      }
-
-      window.location.assign(url);
-    } catch (checkoutError) {
-      setError(
-        checkoutError instanceof Error
-          ? checkoutError.message
-          : "Could not start checkout.",
-      );
-      setActiveAction(null);
+      const result = await authClient.checkout({ slug: plan });
+      if (result.error) throw new Error(result.error.message || "Could not start checkout.");
+      if (!result.data?.url) throw new Error("Polar checkout did not return a redirect URL.");
+      window.location.assign(result.data.url);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not start checkout.");
+      setIsCheckouting(false);
     }
   }
 
   async function handlePortal() {
     setError(null);
     setIsManaging(true);
-
     try {
       const result = await authClient.customer.portal();
-
-      if (result.error) {
-        throw new Error(result.error.message || "Could not open billing portal.");
-      }
-
-      const url = result.data?.url;
-
-      if (!url) {
-        throw new Error("Polar portal did not return a redirect URL.");
-      }
-
-      window.location.assign(url);
-    } catch (portalError) {
-      setError(
-        portalError instanceof Error
-          ? portalError.message
-          : "Could not open billing portal.",
-      );
+      if (result.error) throw new Error(result.error.message || "Could not open billing portal.");
+      if (!result.data?.url) throw new Error("Polar portal did not return a redirect URL.");
+      window.location.assign(result.data.url);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Could not open billing portal.");
       setIsManaging(false);
     }
   }
@@ -141,243 +54,121 @@ function BillingDashboardContent(props: BillingDashboardProps) {
     window.location.assign("/");
   }
 
+  onMount(() => {
+    if (props.autoCheckout && upgradePlan()) {
+      void handleCheckout(upgradePlan()!);
+    }
+  });
+
   return (
-    <div class="grid gap-6">
-      <Suspense
-        fallback={
-          <div class="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-500">
-            Loading customer state...
+    <div class="grid gap-8 animate-fade-up">
+      <div class="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-6 border-b border-white/10">
+        <div>
+          <div class="font-mono text-[0.65rem] font-bold uppercase tracking-[0.3em] text-zinc-500 mb-3 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-electric animate-pulse-soft"></span>
+            Billing Center
           </div>
-        }
-      >
-        <section class="rounded-[2rem] border border-zinc-200 bg-white/92 p-6 shadow-[0_28px_75px_-42px_rgba(24,24,27,0.22)] sm:p-8">
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div class="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                Billing
-              </div>
-              <h1 class="mt-4 text-3xl font-semibold tracking-[-0.05em] text-zinc-950 sm:text-4xl">
-                {props.userName ? `${props.userName}'s billing` : "Billing overview"}
-              </h1>
-              <p class="mt-3 text-base leading-relaxed text-zinc-600">
-                Signed in as {props.userEmail}. Polar is the source of truth for plan state.
-              </p>
-            </div>
+          <h1 class="text-4xl font-medium tracking-tight text-white">
+            {props.userName ? props.userName : "Operator"}
+          </h1>
+          <p class="mt-2 text-sm font-mono text-zinc-500 tracking-tight">
+            ID: <span class="text-zinc-300">{props.userEmail}</span>
+          </p>
+        </div>
 
-            <div class="flex flex-wrap gap-3">
-              <Button
-                class="rounded-2xl"
-                disabled={isManaging()}
-                onClick={() => void handlePortal()}
-                variant="outline"
-              >
-                {isManaging() ? "Opening portal..." : "Manage billing"}
-              </Button>
-              <Button class="rounded-2xl" onClick={() => void handleSignOut()} variant="ghost">
-                Sign out
-              </Button>
-            </div>
-          </div>
-
-          <div class="mt-8 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-            <div class="rounded-[1.6rem] border border-zinc-200 bg-[#f6f1e7] p-5">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <div class="text-sm font-medium text-zinc-500">Current plan</div>
-                  <div class="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-                    {currentPlanDefinition().name}
-                  </div>
-                </div>
-                <Badge variant={planInfo().hasActiveSubscription ? "secondary" : "outline"}>
-                  {planInfo().subscription?.status ?? "none"}
-                </Badge>
-              </div>
-
-              <div class="mt-5 grid gap-3 text-sm text-zinc-700">
-                <div class="flex items-center justify-between">
-                  <span>Price</span>
-                  <span>
-                    {currentPlanDefinition().priceMonthly === null
-                      ? "No active subscription"
-                      : `$${currentPlanDefinition().priceMonthly}/month`}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span>Workspace limit</span>
-                  <span>
-                    {currentPlanDefinition().limits.workspaces ?? "Not available"}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span>Seat limit</span>
-                  <span>{currentPlanDefinition().limits.seats ?? "Not available"}</span>
-                </div>
-                <Show when={currentPeriodEnd()}>
-                  <div class="flex items-center justify-between">
-                    <span>Current period ends</span>
-                    <span>{currentPeriodEnd()}</span>
-                  </div>
-                </Show>
-              </div>
-            </div>
-
-            <div class="rounded-[1.6rem] border border-zinc-200 bg-white p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <div class="text-sm font-medium text-zinc-900">Soft-gate example</div>
-                  <div class="text-sm text-zinc-500">
-                    Tune mock usage to see upgrade guidance change.
-                  </div>
-                </div>
-                <Badge variant={isOverLimit() ? "outline" : "secondary"}>
-                  {isOverLimit() ? "Over limit" : "Within plan"}
-                </Badge>
-              </div>
-
-              <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                <For each={usageControls}>
-                  {(control) => (
-                    <label class="grid gap-2">
-                      <span class="text-sm font-medium text-zinc-800">{control.label}</span>
-                      <input
-                        class="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-950"
-                        max={control.max}
-                        min={control.min}
-                        onInput={(event) => control.setValue(Number(event.currentTarget.value))}
-                        type="range"
-                        value={control.value()}
-                      />
-                      <span class="text-sm text-zinc-600">{control.description()}</span>
-                    </label>
-                  )}
-                </For>
-              </div>
-
-              <div
-                class={cn(
-                  "mt-5 rounded-[1.3rem] border px-4 py-4 text-sm",
-                  isOverLimit()
-                    ? "border-amber-200 bg-amber-50 text-amber-900"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-700",
-                )}
-              >
-                {upgradeMessage()}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="grid gap-5 lg:grid-cols-2">
-          <For each={PAID_PLAN_KEYS}>
-            {(planKey) => {
-              const plan = getPlanDefinition(planKey);
-              const disabled = () =>
-                currentPlan() === planKey || activeAction() === planKey;
-
-              return (
-                <div
-                  class={cn(
-                    "rounded-[1.75rem] border p-6 shadow-[0_22px_55px_-40px_rgba(24,24,27,0.22)]",
-                    planKey === "pro"
-                      ? "border-zinc-900 bg-zinc-950 text-zinc-50"
-                      : "border-zinc-200 bg-white text-zinc-950",
-                  )}
-                >
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <div
-                        class={cn(
-                          "text-[0.7rem] font-semibold uppercase tracking-[0.26em]",
-                          planKey === "pro" ? "text-zinc-400" : "text-zinc-500",
-                        )}
-                      >
-                        {plan.name}
-                      </div>
-                      <div class="mt-4 text-4xl font-semibold tracking-tight">
-                        ${plan.priceMonthly}
-                        <span
-                          class={cn(
-                            "ml-2 text-sm font-medium",
-                            planKey === "pro" ? "text-zinc-300" : "text-zinc-500",
-                          )}
-                        >
-                          / month
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant={currentPlan() === planKey ? "secondary" : "outline"}>
-                      {currentPlan() === planKey ? "Current" : "Available"}
-                    </Badge>
-                  </div>
-
-                  <div class="mt-5 space-y-3">
-                    <For each={plan.marketingBullets}>
-                      {(bullet) => (
-                        <div
-                          class={cn(
-                            "flex items-center gap-3 text-sm",
-                            planKey === "pro" ? "text-zinc-200" : "text-zinc-700",
-                          )}
-                        >
-                          <span
-                            class={cn(
-                              "h-2 w-2 rounded-full",
-                              planKey === "pro" ? "bg-amber-300" : "bg-amber-600",
-                            )}
-                          />
-                          <span>{bullet}</span>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-
-                  <div class="mt-6 flex flex-wrap gap-3">
-                    <Button
-                      class="rounded-2xl"
-                      disabled={disabled()}
-                      onClick={() => void handleCheckout(planKey)}
-                    >
-                      {activeAction() === planKey
-                        ? "Opening checkout..."
-                        : currentPlan() === planKey
-                          ? "Current plan"
-                          : isUpgradeAvailable(currentPlan(), planKey)
-                            ? `Upgrade to ${plan.name}`
-                            : `Choose ${plan.name}`}
-                    </Button>
-                    <Show when={currentPlan() === "starter" && planKey === "pro"}>
-                      <span class="self-center text-sm text-zinc-500">
-                        Upgrade to raise seat and workspace limits.
-                      </span>
-                    </Show>
-                  </div>
-                </div>
-              );
-            }}
-          </For>
-        </section>
-      </Suspense>
-
-      <Show when={customerStateQuery.isError || error()}>
-        <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error() || customerStateQuery.error?.message || "Billing data could not be loaded."}
-          <button
-            class={cn(buttonVariants({ size: "sm", variant: "outline" }), "ml-3 rounded-xl")}
-            onClick={() => void customerStateQuery.refetch()}
-            type="button"
+        <div class="flex gap-3">
+          <a
+            class="rounded-full border border-white/10 bg-transparent px-5 py-2 text-[0.75rem] font-mono uppercase tracking-wider text-zinc-300 transition-all duration-300 hover:bg-white/5 hover:text-white"
+            href="/account/transfers"
           >
-            Retry
+            Transfers
+          </a>
+          <button
+            class="rounded-full border border-transparent bg-white/5 px-5 py-2 text-[0.75rem] font-mono uppercase tracking-wider text-zinc-300 transition-all duration-300 hover:bg-white/10 hover:text-white"
+            disabled={isManaging()}
+            onClick={() => void handlePortal()}
+          >
+            {isManaging() ? "LOADING..." : "MANAGE PORTAL"}
           </button>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <div class="glass-panel rounded-[2rem] p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between gap-3 mb-6">
+              <div class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-500">Current Allocation</div>
+              <div class="px-2 py-1 rounded border border-white/10 bg-white/5 text-[0.6rem] font-mono uppercase tracking-widest text-white">
+                {props.currentPlan === "pro" ? "ACTIVE" : "DEFAULT"}
+              </div>
+            </div>
+            
+            <div class="text-5xl font-medium tracking-tighter text-white mb-8">
+              {planDefinition().name}
+            </div>
+
+            <div class="space-y-4 font-mono text-sm border-t border-white/10 pt-6">
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-500">MONTHLY_COST</span>
+                <span class="text-white">{planDefinition().priceMonthly === null ? "FREE" : `$${planDefinition().priceMonthly}`}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-500">TRANSFER_CAP</span>
+                <span class="text-white">{formatBytes(planDefinition().limits.maxTransferBytes)}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-500">STORAGE_LIMIT</span>
+                <span class="text-white">{formatBytes(planDefinition().limits.activeStorageBytes)}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-500">RETENTION</span>
+                <span class="text-white">{planDefinition().limits.retentionDays} DAYS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-panel rounded-[2rem] p-8 flex flex-col justify-between relative overflow-hidden">
+          <div class="relative z-10">
+            <div class="text-[0.65rem] font-mono uppercase tracking-widest text-zinc-500 mb-6">Included Features</div>
+            <div class="grid gap-4">
+              <For each={planDefinition().marketingBullets}>
+                {(item) => (
+                  <div class="flex items-center gap-4 text-[0.85rem] text-zinc-300 font-light">
+                    <span class="h-1 w-1 rounded-full bg-electric shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+
+          <Show when={upgradePlan()}>
+            <div class="mt-10 pt-8 border-t border-white/10 relative z-10">
+              <div class="text-[0.65rem] font-mono uppercase tracking-widest text-electric mb-2">Upgrade Path Available</div>
+              <h3 class="text-xl font-medium text-white mb-2">Unlock Pro Allocation</h3>
+              <p class="text-sm text-zinc-400 mb-6">
+                Expand your transfer capacity and overall storage volume instantly. No workflow changes.
+              </p>
+              <button
+                class="w-full rounded-full bg-white px-6 py-4 text-[0.8rem] font-bold uppercase tracking-[0.15em] text-zinc-950 transition-all duration-500 hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] disabled:opacity-50 hover:scale-[1.01] active:scale-95"
+                disabled={isCheckouting()}
+                onClick={() => void handleCheckout("pro")}
+                type="button"
+              >
+                {isCheckouting() ? "ALLOCATING..." : "INITIATE UPGRADE"}
+              </button>
+            </div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] bg-electric/10 rounded-full blur-[60px] pointer-events-none z-0"></div>
+          </Show>
+        </div>
+      </div>
+
+      <Show when={error()}>
+        <div class="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-4 text-[0.8rem] font-mono text-red-400 text-center uppercase tracking-widest">
+          ERR: {error()}
         </div>
       </Show>
     </div>
-  );
-}
-
-export default function BillingDashboard(props: BillingDashboardProps) {
-  return (
-    <SolidQueryProvider>
-      <BillingDashboardContent {...props} />
-    </SolidQueryProvider>
   );
 }

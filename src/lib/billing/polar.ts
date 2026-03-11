@@ -2,7 +2,6 @@ import { PLAN_CATALOG, type PlanKey } from "@/lib/billing/plans";
 
 export type BillingProductIds = {
   pro: string;
-  starter: string;
 };
 
 export type PolarSubscriptionLike = {
@@ -16,7 +15,9 @@ export type PolarSubscriptionLike = {
 
 export type PolarCustomerStateLike = {
   activeSubscriptions?: PolarSubscriptionLike[];
+  externalId?: string | null;
   grantedBenefits?: unknown[];
+  id?: string;
 };
 
 export type ResolvedPlanInfo = {
@@ -26,13 +27,12 @@ export type ResolvedPlanInfo = {
 };
 
 export type UsageSnapshot = {
-  seats: number;
-  workspaces: number;
+  activeStorageBytes: number;
+  maxTransferBytes: number;
 };
 
 function getPlanPriority(plan: PlanKey) {
-  if (plan === "pro") return 2;
-  if (plan === "starter") return 1;
+  if (plan === "pro") return 1;
   return 0;
 }
 
@@ -42,25 +42,11 @@ export function resolvePlanFromCustomerState(
 ): PlanKey {
   const subscriptions = customerState?.activeSubscriptions ?? [];
 
-  let resolvedPlan: PlanKey = "none";
+  let resolvedPlan: PlanKey = "free";
 
   for (const subscription of subscriptions) {
-    const productId = subscription.productId;
-
-    if (!productId) continue;
-
-    let candidate: PlanKey = "none";
-
-    if (productId === productIds.starter) {
-      candidate = "starter";
-    }
-
-    if (productId === productIds.pro) {
-      candidate = "pro";
-    }
-
-    if (getPlanPriority(candidate) > getPlanPriority(resolvedPlan)) {
-      resolvedPlan = candidate;
+    if (subscription.productId === productIds.pro) {
+      resolvedPlan = "pro";
     }
   }
 
@@ -78,16 +64,12 @@ export function getActivePlanInfo(
         return item.productId === productIds.pro;
       }
 
-      if (currentPlan === "starter") {
-        return item.productId === productIds.starter;
-      }
-
       return false;
     }) ?? null;
 
   return {
     currentPlan,
-    hasActiveSubscription: currentPlan !== "none",
+    hasActiveSubscription: currentPlan !== "free",
     subscription,
   };
 }
@@ -99,29 +81,22 @@ export function isUpgradeAvailable(currentPlan: PlanKey, targetPlan: PlanKey) {
 export function exceedsPlanLimits(plan: PlanKey, usage: UsageSnapshot) {
   const definition = PLAN_CATALOG[plan];
 
-  if (plan === "none") return usage.seats > 0 || usage.workspaces > 0;
-
   return (
-    (definition.limits.seats !== null && usage.seats > definition.limits.seats) ||
-    (definition.limits.workspaces !== null &&
-      usage.workspaces > definition.limits.workspaces)
+    usage.activeStorageBytes > definition.limits.activeStorageBytes ||
+    usage.maxTransferBytes > definition.limits.maxTransferBytes
   );
 }
 
 export function getUpgradeMessage(plan: PlanKey, usage: UsageSnapshot) {
-  if (plan === "none") {
-    return "Pick a plan to start using workspaces and seats.";
-  }
-
   const definition = PLAN_CATALOG[plan];
 
   if (!exceedsPlanLimits(plan, usage)) {
     return `${definition.name} covers your current usage.`;
   }
 
-  if (plan === "starter") {
-    return "Starter covers 1 workspace and 5 seats. Upgrade to Pro for more room.";
+  if (plan === "free") {
+    return "Free covers up to 2 GB per transfer and 10 GB of active storage. Upgrade to Pro for larger deliveries.";
   }
 
-  return "Pro covers 10 workspaces and 25 seats. Contact support for custom limits.";
+  return "Pro gives you more room for active transfers. Delete old transfers to free storage.";
 }

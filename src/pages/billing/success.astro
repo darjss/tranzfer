@@ -3,7 +3,6 @@ import CheckoutSuccess from "@/components/CheckoutSuccess";
 import SiteHeader from "@/components/SiteHeader.astro";
 import Layout from "@/layouts/Layout.astro";
 import { requireUser } from "@/lib/server/require-user";
-import { getBillingProductIds } from "@/server/lib/billing-config";
 
 const requiredUser = requireUser(Astro);
 
@@ -12,16 +11,15 @@ if (requiredUser instanceof Response) {
 }
 
 const checkoutId = Astro.url.searchParams.get("checkout_id");
-const productIds = getBillingProductIds();
 ---
 
-<Layout description="Checkout completed. Syncing Polar customer state." title="Checkout Success | Threadline Starter">
-  <div class="min-h-[100dvh] bg-[linear-gradient(180deg,#f5f1e8_0%,#f8f7f4_44%,#ffffff_100%)] text-zinc-950">
+<Layout description="Your Pro checkout is complete." title="Checkout Success | Tranzfer">
+  <div class="min-h-[100dvh]">
     <SiteHeader currentPath="/billing/success" user={requiredUser} />
 
-    <main class="px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+    <main class="px-5 pb-16 pt-28 sm:px-8 lg:pt-32">
       <div class="mx-auto max-w-[920px]">
-        <CheckoutSuccess client:load checkoutId={checkoutId} productIds={productIds} />
+        <CheckoutSuccess client:load checkoutId={checkoutId} />
       </div>
     </main>
   </div>

@@ -3,107 +3,153 @@ import PricingSection from "@/components/PricingSection";
 import PricingSectionFallback from "@/components/PricingSectionFallback.astro";
 import SiteHeader from "@/components/SiteHeader.astro";
 import Layout from "@/layouts/Layout.astro";
-import { getBillingProductIds } from "@/server/lib/billing-config";
 
-const productIds = getBillingProductIds();
 const user = Astro.locals.user;
 
-const featureRail = [
+const highlights = [
   {
-    detail: "Checkout, portal access, and webhook handling all stay under Better Auth.",
-    title: "Billing lives inside the same auth boundary",
+    detail: "No clunky portals. Your recipient gets a cinematic presentation of your work, not a login wall. Your art remains the focal point.",
+    title: "Zero Friction Delivery",
   },
   {
-    detail: "Polar checkout is wired for recurring subscriptions without adding custom billing tables.",
-    title: "Recurring billing without extra backend inventory",
+    detail: "Metadata, billing, and expiry operate on edge networks. Upload directly to Cloudflare R2. Ridiculously fast, globally distributed.",
+    title: "Edge-Native Infrastructure",
   },
   {
-    detail: "The same starter now covers marketing, signup, checkout, and account billing.",
-    title: "One codebase from landing page to paid account",
-  },
-];
-
-const deliverySteps = [
-  {
-    body: "Start users on Starter at $9/month with one workspace and five seats.",
-    step: "Launch the base plan",
-  },
-  {
-    body: "Upgrade to Pro at $29/month when teams need more seats, more workspaces, and priority support.",
-    step: "Open the expansion path",
-  },
-  {
-    body: "Use the billing page soft-gate to show upgrade pressure before you hard-enforce limits in APIs.",
-    step: "Grow into enforcement later",
+    detail: "We don't charge you for breathing. Move to the Pro tier only when your RAWs or 8K timelines outgrow our generous defaults.",
+    title: "Pay For Gravity",
   },
 ];
 ---
 
 <Layout
-  description="Threadline starter with Better Auth, Polar checkout, Astro, and Cloudflare in one repo."
-  title="Threadline Starter"
+  description="Tranzfer is a high-end delivery protocol for photographers, editors, and studios."
+  title="Tranzfer | The Cinematic Delivery Protocol"
 >
-  <div class="min-h-[100dvh] bg-[linear-gradient(180deg,#f5f1e8_0%,#f8f7f4_44%,#ffffff_100%)] text-zinc-950">
+  <div class="min-h-[100dvh] relative selection:bg-electric selection:text-white">
+    <!-- Abstract blurred background elements -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-[-1]">
+      <div class="absolute top-[-10%] right-[-5%] w-[50vw] h-[50vw] rounded-full bg-electric/10 blur-[120px] animate-pulse-soft"></div>
+      <div class="absolute bottom-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-zinc-900/80 blur-[100px]"></div>
+    </div>
+
     <SiteHeader currentPath="/" user={user} />
 
-    <main>
-      <section class="px-4 pb-16 pt-10 sm:px-6 lg:px-8 lg:pb-20 lg:pt-14">
-        <div class="mx-auto grid max-w-[1120px] gap-10 lg:grid-cols-[0.94fr_1.06fr] lg:items-end lg:gap-14">
-          <div class="max-w-2xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-zinc-300/80 bg-white/85 px-3 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-              <span class="h-2 w-2 rounded-full bg-amber-600"></span>
-              Astro, Better Auth, Polar, Cloudflare
+    <main class="relative z-10">
+      <section class="min-h-[100dvh] flex flex-col justify-center px-6 pt-32 pb-20 lg:px-12">
+        <div class="mx-auto w-full max-w-[1600px] grid lg:grid-cols-[1.1fr_0.9fr] gap-16 lg:gap-24 items-center">
+          
+          <!-- Left: Massive Typography -->
+          <div class="max-w-3xl animate-fade-up">
+            <div class="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[0.65rem] font-bold uppercase tracking-[0.3em] text-zinc-300 backdrop-blur-md">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-electric opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-electric"></span>
+              </span>
+              Built for Visual Artists
             </div>
 
-            <h1 class="mt-8 text-5xl font-semibold tracking-[-0.06em] text-zinc-950 sm:text-6xl lg:text-[5.4rem] lg:leading-[0.94]">
-              Sell Starter and Pro from the same app that runs your product.
+            <h1 class="mt-10 text-[3.5rem] font-medium leading-[0.9] tracking-[-0.05em] text-white sm:text-7xl lg:text-[6.5rem]">
+              Deliver your <br/>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-zinc-300 via-white to-zinc-600 italic font-serif">masterpiece.</span>
             </h1>
 
-            <p class="mt-6 max-w-[40rem] text-base leading-relaxed text-zinc-600 sm:text-lg">
-              This starter now includes authenticated Polar checkout, Better Auth customer wiring,
-              a billing portal, and account-side plan state without adding a second app or a custom
-              billing backend.
+            <p class="mt-8 max-w-[32rem] text-lg leading-relaxed text-zinc-400 font-light text-balance">
+              WeTransfer is basic. Tranzfer is a high-performance, edge-native protocol designed specifically for photographers, videographers, and creative studios who refuse to compromise on presentation.
             </p>
 
-            <div class="mt-8 flex flex-wrap gap-3">
+            <div class="mt-12 flex flex-wrap items-center gap-4">
               <a
-                class="rounded-2xl border border-zinc-900 bg-zinc-950 px-5 py-3 text-sm font-medium text-zinc-50 transition-colors hover:bg-zinc-800"
-                href="/pricing"
+                class="group relative inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-zinc-950 transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)] active:scale-95 overflow-hidden"
+                href={user ? "/account/transfers" : "/auth/sign-up"}
               >
-                View pricing
+                <div class="absolute inset-0 bg-zinc-200 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300 ease-out z-0"></div>
+                <span class="relative z-10 flex items-center gap-2">
+                  {user ? "Open Protocol" : "Initiate Transfer"}
+                  <svg class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
               </a>
               <a
-                class="rounded-2xl border border-zinc-300 bg-white px-5 py-3 text-sm font-medium text-zinc-900 transition-colors hover:border-zinc-400"
-                href={user ? "/account/billing" : "/auth/sign-up?plan=starter"}
+                class="group inline-flex items-center justify-center rounded-full px-8 py-4 text-sm font-bold uppercase tracking-[0.1em] text-zinc-400 transition-all duration-300 hover:text-white"
+                href="/pricing"
               >
-                {user ? "Open billing" : "Start Starter"}
+                <span class="relative">
+                  View Specs
+                  <span class="absolute -bottom-1 left-0 w-0 h-px bg-white transition-all duration-300 group-hover:w-full"></span>
+                </span>
               </a>
             </div>
           </div>
 
-          <div class="grid gap-4">
-            {featureRail.map((item, index) => (
-              <div
-                class:list={[
-                  "rounded-[1.75rem] border p-6 shadow-[0_24px_60px_-42px_rgba(24,24,27,0.22)]",
-                  index === 1 ? "border-zinc-900 bg-zinc-950 text-zinc-50" : "border-zinc-200 bg-white/92 text-zinc-950",
-                ]}
-              >
-                <div
-                  class:list={[
-                    "text-[0.72rem] font-semibold uppercase tracking-[0.26em]",
-                    index === 1 ? "text-zinc-400" : "text-zinc-500",
-                  ]}
-                >
-                  0{index + 1}
+          <!-- Right: Asymmetric Bento Visuals -->
+          <div class="relative w-full h-[500px] lg:h-[750px] animate-fade-in delay-200 mt-12 lg:mt-0">
+            <div class="absolute top-0 right-0 w-[85%] h-[75%] rounded-[2rem] overflow-hidden glass-panel transform rotate-1 hover:rotate-0 transition-all duration-700 hover:scale-105 z-20 shadow-2xl">
+              <img src="https://images.unsplash.com/photo-1542038784456-1ea8e935640e?q=80&w=2070&auto=format&fit=crop" alt="Photography Workspace" class="w-full h-full object-cover opacity-80 mix-blend-luminosity grayscale hover:grayscale-0 transition-all duration-1000" />
+              <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80"></div>
+              <div class="absolute bottom-8 left-8">
+                <div class="text-[0.65rem] font-mono tracking-[0.2em] text-white/50 mb-2">01 // VISUALS</div>
+                <div class="text-2xl font-medium tracking-tight text-white">Lossless Quality</div>
+              </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 w-[70%] h-[45%] rounded-[2rem] overflow-hidden liquid-glass transform -rotate-2 hover:rotate-0 transition-all duration-700 hover:scale-105 z-30 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
+              <div class="w-full h-full flex flex-col justify-between p-7 relative">
+                <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay"></div>
+                <div class="relative z-10 flex justify-between items-start">
+                  <div class="flex gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full bg-zinc-700 border border-zinc-500"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-zinc-700 border border-zinc-500"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-zinc-700 border border-zinc-500"></div>
+                  </div>
+                  <div class="text-[0.65rem] font-mono text-zinc-400 tracking-[0.15em] px-2 py-1 rounded-md bg-white/5 border border-white/10">TRANSFER_ACTIVE</div>
                 </div>
-                <h2 class="mt-4 text-2xl font-semibold tracking-tight">{item.title}</h2>
-                <p
-                  class:list={[
-                    "mt-3 text-sm leading-relaxed",
-                    index === 1 ? "text-zinc-300" : "text-zinc-600",
-                  ]}
-                >
+                
+                <div class="relative z-10 mt-auto">
+                  <div class="flex justify-between text-xs font-mono text-zinc-400 mb-3">
+                    <span class="tracking-tight text-zinc-300">FINAL_CUT_V3.MP4</span>
+                    <span class="text-white font-bold">68%</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-white w-[68%] rounded-full relative">
+                      <div class="absolute top-0 right-0 w-16 h-full bg-electric/50 blur-[2px] animate-marquee"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="absolute top-[20%] left-[-5%] w-[40%] h-[40%] rounded-full bg-electric/15 blur-[80px] z-10 animate-float"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Divider -->
+      <div class="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+
+      <section class="px-6 py-32 lg:px-12 relative">
+        <div class="mx-auto max-w-[1600px]">
+          <div class="mb-20 flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <h2 class="text-4xl md:text-6xl font-medium tracking-tight text-white leading-none">
+              Engineering <br/>
+              <span class="italic font-serif text-zinc-500">excellence.</span>
+            </h2>
+            <p class="text-zinc-400 max-w-md text-sm leading-relaxed">
+              We stripped out every unnecessary feature to give you pure, unadulterated delivery speed. The result is a radically simplified architecture.
+            </p>
+          </div>
+          <div class="grid md:grid-cols-3 gap-6 lg:gap-10">
+            {highlights.map((item, index) => (
+              <div class="group relative p-10 rounded-[2.5rem] glass-panel overflow-hidden transition-all duration-700 hover:bg-zinc-900/90 hover:-translate-y-2">
+                <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 transform -translate-x-full group-hover:translate-x-full ease-in-out"></div>
+                <div class="text-[0.7rem] font-mono font-bold tracking-[0.3em] text-zinc-600 mb-8 transition-colors duration-500 group-hover:text-white">
+                  {String(index + 1).padStart(2, '0')} // FEATURE
+                </div>
+                <h3 class="text-2xl font-medium tracking-tight text-white mb-5">
+                  {item.title}
+                </h3>
+                <p class="text-zinc-400 leading-relaxed text-[0.95rem] font-light">
                   {item.detail}
                 </p>
               </div>
@@ -112,53 +158,20 @@ const deliverySteps = [
         </div>
       </section>
 
-      <section class="px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div class="mx-auto max-w-[1120px]">
+      <section class="px-6 py-32 lg:px-12 relative overflow-hidden">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-white/[0.01] rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="mx-auto max-w-[1200px] relative z-10">
           <PricingSection
-            client:only="solid-js"
-            description="Public plan cards route new users through sign-up first, then continue directly into Polar checkout."
-            productIds={productIds}
-            title="Two recurring plans, one checkout path"
+            client:load
+            description="Start free, authenticate securely, and scale into Pro only when your art demands it."
+            title="Surgical Pricing."
           >
             <PricingSectionFallback
               slot="fallback"
-              description="Public plan cards route new users through sign-up first, then continue directly into Polar checkout."
-              title="Two recurring plans, one checkout path"
+              description="Start free, authenticate securely, and scale into Pro only when your art demands it."
+              title="Surgical Pricing."
             />
           </PricingSection>
-        </div>
-      </section>
-
-      <section class="px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <div class="mx-auto grid max-w-[1120px] gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div class="max-w-md">
-            <div class="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-              Delivery path
-            </div>
-            <h2 class="mt-4 text-3xl font-semibold tracking-[-0.05em] text-zinc-950 sm:text-4xl">
-              Start with conversion, then keep the same billing language inside the app.
-            </h2>
-            <p class="mt-4 text-base leading-relaxed text-zinc-600">
-              The point is not just to show pricing. The point is to carry plan state, checkout,
-              and account management through the same product surface.
-            </p>
-          </div>
-
-          <div class="grid gap-4">
-            {deliverySteps.map((item, index) => (
-              <div class="grid gap-4 rounded-[1.75rem] border border-zinc-200 bg-white/92 p-6 shadow-[0_22px_55px_-40px_rgba(24,24,27,0.22)] sm:grid-cols-[120px_1fr] sm:p-7">
-                <div class="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                  Step 0{index + 1}
-                </div>
-                <div>
-                  <h3 class="text-xl font-semibold tracking-tight text-zinc-950">{item.step}</h3>
-                  <p class="mt-2 max-w-[42rem] text-sm leading-relaxed text-zinc-600">
-                    {item.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
     </main>

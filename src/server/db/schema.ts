@@ -87,9 +87,115 @@ export const verification = sqliteTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
+export const userEntitlement = sqliteTable(
+  "user_entitlement",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .unique()
+      .references(() => user.id, { onDelete: "cascade" }),
+    plan: text("plan").notNull().default("free"),
+    source: text("source").notNull().default("default"),
+    polarCustomerId: text("polar_customer_id"),
+    polarProductId: text("polar_product_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("user_entitlement_plan_idx").on(table.plan)],
+);
+
+export const transfer = sqliteTable(
+  "transfer",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title"),
+    message: text("message"),
+    status: text("status").notNull().default("draft"),
+    totalBytes: integer("total_bytes").notNull().default(0),
+    uploadedBytes: integer("uploaded_bytes").notNull().default(0),
+    fileCount: integer("file_count").notNull().default(0),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("transfer_owner_user_id_idx").on(table.ownerUserId),
+    index("transfer_status_idx").on(table.status),
+    index("transfer_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const transferFile = sqliteTable(
+  "transfer_file",
+  {
+    id: text("id").primaryKey(),
+    transferId: text("transfer_id")
+      .notNull()
+      .references(() => transfer.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull().unique(),
+    originalName: text("original_name").notNull(),
+    contentType: text("content_type"),
+    sizeBytes: integer("size_bytes").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    multipartUploadId: text("multipart_upload_id"),
+    etag: text("etag"),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("transfer_file_transfer_id_idx").on(table.transferId),
+    index("transfer_file_status_idx").on(table.status),
+  ],
+);
+
+export const transferDownloadEvent = sqliteTable(
+  "transfer_download_event",
+  {
+    id: text("id").primaryKey(),
+    transferId: text("transfer_id")
+      .notNull()
+      .references(() => transfer.id, { onDelete: "cascade" }),
+    transferFileId: text("transfer_file_id")
+      .notNull()
+      .references(() => transferFile.id, { onDelete: "cascade" }),
+    ipHash: text("ip_hash"),
+    userAgent: text("user_agent"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("transfer_download_event_transfer_id_idx").on(table.transferId),
+    index("transfer_download_event_file_id_idx").on(table.transferFileId),
+  ],
+);
+
 export const userRelations = relations(user, ({ many }) => ({
-  sessions: many(session),
   accounts: many(account),
+  sessions: many(session),
+  transfers: many(transfer),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -105,3 +211,40 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const userEntitlementRelations = relations(userEntitlement, ({ one }) => ({
+  user: one(user, {
+    fields: [userEntitlement.userId],
+    references: [user.id],
+  }),
+}));
+
+export const transferRelations = relations(transfer, ({ many, one }) => ({
+  files: many(transferFile),
+  owner: one(user, {
+    fields: [transfer.ownerUserId],
+    references: [user.id],
+  }),
+}));
+
+export const transferFileRelations = relations(transferFile, ({ many, one }) => ({
+  downloads: many(transferDownloadEvent),
+  transfer: one(transfer, {
+    fields: [transferFile.transferId],
+    references: [transfer.id],
+  }),
+}));
+
+export const transferDownloadEventRelations = relations(
+  transferDownloadEvent,
+  ({ one }) => ({
+    file: one(transferFile, {
+      fields: [transferDownloadEvent.transferFileId],
+      references: [transferFile.id],
+    }),
+    transfer: one(transfer, {
+      fields: [transferDownloadEvent.transferId],
+      references: [transfer.id],
+    }),
+  }),
+);

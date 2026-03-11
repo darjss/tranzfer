@@ -18,15 +18,15 @@ function stripApiPrefix(request: Request) {
 
 export const ALL: APIRoute = async ({ request, locals }) => {
   const runtime = (locals as unknown as Runtime<CloudflareEnv>).runtime;
-  const apiRequest = stripApiPrefix(request);
 
   return runWithRuntime(runtime, () => {
-    const pathname = new URL(apiRequest.url).pathname;
+    const pathname = new URL(request.url).pathname;
 
-    if (pathname === "/auth" || pathname.startsWith("/auth/")) {
-      return getAuth().handler(apiRequest);
+    if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
+      return getAuth().handler(request);
     }
 
+    const apiRequest = stripApiPrefix(request);
     return app.handle(apiRequest);
   });
 };

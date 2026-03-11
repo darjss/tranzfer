@@ -1,0 +1,31 @@
+---
+import SiteHeader from "@/components/SiteHeader.astro";
+import TransfersDashboard from "@/components/TransfersDashboard";
+import TransfersDashboardFallback from "@/components/TransfersDashboardFallback.astro";
+import Layout from "@/layouts/Layout.astro";
+import { requireUser } from "@/lib/server/require-user";
+
+const requiredUser = requireUser(Astro);
+
+if (requiredUser instanceof Response) {
+  return requiredUser;
+}
+---
+
+<Layout description="Upload files and manage outgoing deliveries." title="Transfers | Tranzfer">
+  <div class="min-h-[100dvh]">
+    <SiteHeader currentPath="/account/transfers" user={requiredUser} />
+
+    <main class="px-5 pb-16 pt-28 sm:px-8 lg:pt-32">
+      <div class="mx-auto max-w-[1200px]">
+        <TransfersDashboard
+          client:load
+          userEmail={requiredUser.email}
+          userName={requiredUser.name}
+        >
+          <TransfersDashboardFallback slot="fallback" />
+        </TransfersDashboard>
+      </div>
+    </main>
+  </div>
+</Layout>

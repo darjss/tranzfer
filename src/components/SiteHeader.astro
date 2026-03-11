@@ -1,47 +1,59 @@
 ---
-const {
-  currentPath = "/",
-  user = null,
-} = Astro.props;
+const currentPath = Astro.props.currentPath || "/";
+const user = Astro.props.user || null;
 
-const accountHref = user ? "/account/billing" : "/auth/sign-in";
-const accountLabel = user ? "Billing" : "Sign in";
+const dashboardHref = user ? "/account/transfers" : "/auth/sign-in";
+const dashboardLabel = user ? "Dashboard" : "Sign in";
 ---
 
-<header class="border-b border-zinc-200/70">
-  <div class="mx-auto flex max-w-[1120px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-    <a class="flex items-center gap-3" href="/">
-      <div class="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-zinc-300 bg-white text-sm font-semibold tracking-[0.22em] text-zinc-900 shadow-[0_18px_40px_-26px_rgba(24,24,27,0.28)]">
-        TL
+<header class="fixed top-6 inset-x-0 z-50 flex justify-center w-full pointer-events-none px-4 animate-fade-down">
+  <div class="pointer-events-auto liquid-glass rounded-[2rem] flex items-center justify-between px-3 py-3 w-full max-w-[900px] transition-all duration-700 hover:shadow-[0_20px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/20">
+    
+    <a class="group flex items-center gap-3.5 pl-2 transition-transform duration-300 hover:scale-[0.98] active:scale-95" href="/">
+      <div class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[0.85rem] font-bold tracking-[0.15em] text-zinc-950 shadow-[0_0_20px_rgba(255,255,255,0.2)] overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-tr from-white to-zinc-300 z-0"></div>
+        <span class="z-10 relative">TZ</span>
       </div>
-      <div>
-        <div class="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-          Threadline
+      <div class="hidden sm:block">
+        <div class="text-[0.7rem] font-semibold uppercase tracking-[0.35em] text-white/90">
+          Tranzfer
         </div>
-        <div class="text-sm text-zinc-600">Astro starter for subscription products</div>
+        <div class="text-[0.65rem] uppercase tracking-[0.2em] text-white/40 mt-0.5">Protocol</div>
       </div>
     </a>
 
-    <nav class="flex items-center gap-3">
+    <nav class="flex items-center gap-1 sm:gap-2">
       <a
         class:list={[
-          "text-sm transition-colors hover:text-zinc-950",
-          currentPath === "/pricing" ? "text-zinc-950" : "text-zinc-600",
+          "rounded-full px-4 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.1em] transition-all duration-300",
+          currentPath === "/pricing"
+            ? "bg-white/10 text-white"
+            : "text-zinc-400 hover:bg-white/5 hover:text-white",
         ]}
         href="/pricing"
       >
         Pricing
       </a>
+      {user ? (
+        <a
+          class:list={[
+            "rounded-full px-4 py-2.5 text-[0.8rem] font-medium uppercase tracking-[0.1em] transition-all duration-300 hidden sm:block",
+            currentPath === "/account/billing"
+              ? "bg-white/10 text-white"
+              : "text-zinc-400 hover:bg-white/5 hover:text-white",
+          ]}
+          href="/account/billing"
+        >
+          Billing
+        </a>
+      ) : null}
+      <div class="h-6 w-px bg-white/10 mx-2 hidden sm:block"></div>
       <a
-        class:list={[
-          "rounded-2xl border px-4 py-2.5 text-sm font-medium transition-all",
-          currentPath === accountHref
-            ? "border-zinc-900 bg-zinc-950 text-zinc-50"
-            : "border-zinc-300 bg-white text-zinc-900 hover:border-zinc-400",
-        ]}
-        href={accountHref}
+        class="group relative ml-1 rounded-full px-6 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.1em] text-zinc-950 bg-white overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-95"
+        href={dashboardHref}
       >
-        {accountLabel}
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-100%] group-hover:animate-shimmer z-0"></div>
+        <span class="relative z-10">{dashboardLabel}</span>
       </a>
     </nav>
   </div>

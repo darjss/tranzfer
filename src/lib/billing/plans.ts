@@ -1,14 +1,15 @@
-export type PlanKey = "none" | "starter" | "pro";
-export type PaidPlanKey = Exclude<PlanKey, "none">;
+export type PlanKey = "free" | "pro";
+export type PaidPlanKey = Extract<PlanKey, "pro">;
 
 export type PlanLimits = {
-  seats: number | null;
-  workspaces: number | null;
+  activeStorageBytes: number;
+  maxTransferBytes: number;
+  retentionDays: number;
 };
 
 export type PlanDefinition = {
   key: PlanKey;
-  slug: Exclude<PlanKey, "none"> | null;
+  slug: PaidPlanKey | null;
   name: string;
   priceMonthly: number | null;
   limits: PlanLimits;
@@ -16,59 +17,60 @@ export type PlanDefinition = {
   polarProductEnvKey: string | null;
 };
 
+export const GIGABYTE_BYTES = 1024 * 1024 * 1024;
+
 export const PLAN_CATALOG: Record<PlanKey, PlanDefinition> = {
-  none: {
-    key: "none",
+  free: {
+    key: "free",
     slug: null,
-    name: "No active subscription",
+    name: "Free",
     priceMonthly: null,
     limits: {
-      seats: null,
-      workspaces: null,
+      activeStorageBytes: 10 * GIGABYTE_BYTES,
+      maxTransferBytes: 2 * GIGABYTE_BYTES,
+      retentionDays: 7,
     },
     marketingBullets: [
-      "No active Polar subscription",
-      "Upgrade to unlock recurring billing",
-      "Manage purchases after checkout",
+      "Up to 2 GB per transfer",
+      "10 GB of active storage for live transfers",
+      "Fast public links with 7-day expiry",
     ],
     polarProductEnvKey: null,
-  },
-  starter: {
-    key: "starter",
-    slug: "starter",
-    name: "Starter",
-    priceMonthly: 9,
-    limits: {
-      seats: 5,
-      workspaces: 1,
-    },
-    marketingBullets: [
-      "1 workspace included",
-      "Up to 5 seats",
-      "Standard email support",
-    ],
-    polarProductEnvKey: "POLAR_PRODUCT_STARTER_ID",
   },
   pro: {
     key: "pro",
     slug: "pro",
     name: "Pro",
-    priceMonthly: 29,
+    priceMonthly: 18,
     limits: {
-      seats: 25,
-      workspaces: 10,
+      activeStorageBytes: 200 * GIGABYTE_BYTES,
+      maxTransferBytes: 20 * GIGABYTE_BYTES,
+      retentionDays: 7,
     },
     marketingBullets: [
-      "10 workspaces included",
-      "Up to 25 seats",
-      "Priority support",
+      "Up to 20 GB per transfer",
+      "200 GB of active storage for ongoing deliveries",
+      "Priority support for client handoff work",
     ],
     polarProductEnvKey: "POLAR_PRODUCT_PRO_ID",
   },
 };
 
-export const PAID_PLAN_KEYS = ["starter", "pro"] as const satisfies readonly PaidPlanKey[];
+export const PAID_PLAN_KEYS = ["pro"] as const satisfies readonly PaidPlanKey[];
 
 export function getPlanDefinition(key: PlanKey) {
   return PLAN_CATALOG[key];
+}
+
+export function formatBytes(value: number) {
+  const units = ["B", "KB", "MB", "GB", "TB"] as const;
+  let nextValue = value;
+  let unitIndex = 0;
+
+  while (nextValue >= 1024 && unitIndex < units.length - 1) {
+    nextValue /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${nextValue.toFixed(nextValue >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }

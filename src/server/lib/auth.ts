@@ -3,8 +3,9 @@ import { Polar } from "@polar-sh/sdk";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "@/server/db";
-import { getRuntimeEnv } from "@/server/lib/runtime";
 import * as schema from "@/server/db/schema";
+import { syncEntitlementFromCustomerState } from "@/server/lib/entitlements";
+import { getRuntimeEnv } from "@/server/lib/runtime";
 
 function getTrustedOrigins() {
   const env = getRuntimeEnv();
@@ -24,33 +25,51 @@ function getTrustedOrigins() {
 }
 
 function toAbsoluteUrl(path: string, baseUrl?: string) {
-  if (!baseUrl) return path;
+  if (!baseUrl) {
+    return path;
+  }
 
   return new URL(path, baseUrl).toString();
 }
 
-function logPolarEvent(event: string, payload: unknown) {
-  console.info(
-    JSON.stringify({
-      event,
-      payload,
-      source: "polar-webhook",
-    }),
-  );
+function shouldCreatePolarCustomerOnSignUp(baseUrl?: string) {
+  if (!baseUrl) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(baseUrl).hostname;
+
+    return hostname !== "localhost" && hostname !== "127.0.0.1";
+  } catch {
+    return false;
+  }
 }
 
 export function getAuth() {
   const env = getRuntimeEnv();
   const polarServer = env.POLAR_SERVER === "production" ? "production" : "sandbox";
+  const createPolarCustomerOnSignUp = shouldCreatePolarCustomerOnSignUp(
+    env.BETTER_AUTH_URL,
+  );
   const polarClient = new Polar({
     accessToken: env.POLAR_ACCESS_TOKEN || "",
     server: polarServer,
   });
 
   return betterAuth({
-    secret: env.BETTER_AUTH_SECRET,
     ...(env.BETTER_AUTH_URL ? { baseURL: env.BETTER_AUTH_URL } : {}),
-    basePath: "/auth",
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? {
+          socialProviders: {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID,
+              clientSecret: env.GOOGLE_CLIENT_SECRET,
+            },
+          },
+        }
+      : {}),
+    basePath: "/api/auth",
     database: drizzleAdapter(getDb(), {
       provider: "sqlite",
       schema,
@@ -62,7 +81,7 @@ export function getAuth() {
     plugins: [
       polar({
         client: polarClient,
-        createCustomerOnSignUp: true,
+        createCustomerOnSignUp: createPolarCustomerOnSignUp,
         getCustomerCreateParams: async ({ user }) =>
           ({
             externalId: user.id,
@@ -71,10 +90,6 @@ export function getAuth() {
           checkout({
             authenticatedUsersOnly: true,
             products: [
-              {
-                productId: env.POLAR_PRODUCT_STARTER_ID || "",
-                slug: "starter",
-              },
               {
                 productId: env.POLAR_PRODUCT_PRO_ID || "",
                 slug: "pro",
@@ -90,29 +105,22 @@ export function getAuth() {
             returnUrl: toAbsoluteUrl("/account/billing", env.BETTER_AUTH_URL),
           }),
           webhooks({
-            secret: env.POLAR_WEBHOOK_SECRET || "",
             onCustomerStateChanged: async (payload) => {
-              logPolarEvent("customer.state_changed", payload);
+              await syncEntitlementFromCustomerState(payload.data);
             },
-            onOrderPaid: async (payload) => {
-              logPolarEvent("order.paid", payload);
-            },
-            onPayload: async (payload) => {
-              logPolarEvent("payload", payload);
-            },
-            onSubscriptionActive: async (payload) => {
-              logPolarEvent("subscription.active", payload);
-            },
-            onSubscriptionCanceled: async (payload) => {
-              logPolarEvent("subscription.canceled", payload);
-            },
-            onSubscriptionUpdated: async (payload) => {
-              logPolarEvent("subscription.updated", payload);
-            },
+            onPayload: async () => undefined,
+            secret: env.POLAR_WEBHOOK_SECRET || "",
           }),
         ],
       }),
     ],
+    secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: getTrustedOrigins(),
+  });
+}
+
+export async function getSessionFromHeaders(headers: Headers) {
+  return getAuth().api.getSession({
+    headers,
   });
 }

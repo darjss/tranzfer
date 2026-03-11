@@ -40,7 +40,7 @@ export const authSharedFields = [
     label: "Email",
     minlength: undefined,
     name: "email",
-    placeholder: "you@threadline.app",
+    placeholder: "you@studio.com",
     type: "email",
   },
   {
@@ -65,17 +65,17 @@ export function getAuthSchema(mode: AuthMode) {
 }
 
 export function getAuthHeading(mode: AuthMode) {
-  return mode === "sign-up" ? "Create your account" : "Welcome back";
+  return mode === "sign-up" ? "Create your Tranzfer account" : "Sign back in";
 }
 
 export function getAuthSubtitle(mode: AuthMode, plan: PaidPlanKey | null) {
-  if (plan) {
-    return `You’ll continue into the ${plan} checkout after authentication.`;
+  if (plan === "pro") {
+    return "Google is the fastest path. If you prefer, create an account with email and continue into Pro after auth.";
   }
 
   return mode === "sign-up"
-    ? "Start a new account with email and password."
-    : "Sign in to manage billing and subscription state.";
+    ? "Start sending large files with a free account, then upgrade only when your transfer sizes outgrow it."
+    : "Open your transfers, billing, and recent delivery history.";
 }
 
 export function getAuthSubmitLabel(
@@ -84,7 +84,7 @@ export function getAuthSubmitLabel(
   plan: PaidPlanKey | null,
 ) {
   if (isSubmitting) {
-    return plan ? "Opening checkout..." : "Working...";
+    return plan ? "Opening Pro..." : "Working...";
   }
 
   return mode === "sign-up" ? "Create account" : "Sign in";

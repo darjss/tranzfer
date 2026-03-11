@@ -3,31 +3,28 @@ import PricingSection from "@/components/PricingSection";
 import PricingSectionFallback from "@/components/PricingSectionFallback.astro";
 import SiteHeader from "@/components/SiteHeader.astro";
 import Layout from "@/layouts/Layout.astro";
-import { getBillingProductIds } from "@/server/lib/billing-config";
 
-const productIds = getBillingProductIds();
 const user = Astro.locals.user;
 ---
 
 <Layout
-  description="Public pricing for the Threadline starter with Polar checkout."
-  title="Pricing | Threadline Starter"
+  description="Pricing for Tranzfer large-file delivery."
+  title="Pricing | Tranzfer"
 >
-  <div class="min-h-[100dvh] bg-[linear-gradient(180deg,#f5f1e8_0%,#f8f7f4_44%,#ffffff_100%)] text-zinc-950">
+  <div class="min-h-[100dvh]">
     <SiteHeader currentPath="/pricing" user={user} />
 
-    <main class="px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <div class="mx-auto max-w-[1120px]">
+    <main class="px-5 pb-16 pt-28 sm:px-8 lg:pt-32">
+      <div class="mx-auto max-w-[1200px]">
         <PricingSection
-          client:only="solid-js"
-          description="Choose Starter for the first team or Pro for higher limits. New users authenticate first, then continue straight into Polar checkout."
-          productIds={productIds}
-          title="Pick the plan that matches the current stage of the product"
+          client:load
+          description="Free gets you moving quickly. Pro expands transfer size and active storage without changing the sending flow."
+          title="Pricing for delivery work, not bloated file portals"
         >
           <PricingSectionFallback
             slot="fallback"
-            description="Choose Starter for the first team or Pro for higher limits. New users authenticate first, then continue straight into Polar checkout."
-            title="Pick the plan that matches the current stage of the product"
+            description="Free gets you moving quickly. Pro expands transfer size and active storage without changing the sending flow."
+            title="Pricing for delivery work, not bloated file portals"
           />
         </PricingSection>
       </div>
