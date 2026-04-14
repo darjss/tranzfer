@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 import { betterAuth } from "better-auth";
@@ -5,11 +6,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "@/server/db";
 import * as schema from "@/server/db/schema";
 import { syncEntitlementFromCustomerState } from "@/server/lib/entitlements";
-import { getRuntimeEnv } from "@/server/lib/runtime";
 
 function getTrustedOrigins() {
-  const env = getRuntimeEnv();
-
   return Array.from(
     new Set(
       [env.BETTER_AUTH_URL, env.TRUSTED_ORIGINS]
@@ -47,7 +45,6 @@ function shouldCreatePolarCustomerOnSignUp(baseUrl?: string) {
 }
 
 export function getAuth() {
-  const env = getRuntimeEnv();
   const polarServer = env.POLAR_SERVER === "production" ? "production" : "sandbox";
   const createPolarCustomerOnSignUp = shouldCreatePolarCustomerOnSignUp(
     env.BETTER_AUTH_URL,

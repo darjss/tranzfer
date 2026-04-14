@@ -174,15 +174,13 @@ const db = await D1Database("db", {
 });
 
 const bucket = await R2Bucket("bucket", {
-  adopt: isProductionStage,
+  adopt: true,
   cors: [
     {
       allowed: {
         headers: ["content-type", "origin"],
         methods: ["GET", "PUT", "POST", "HEAD"],
-        origins: isProductionStage
-          ? ["https://tranzfer.app", "https://www.tranzfer.app"]
-          : ["http://127.0.0.1:4321", "http://localhost:4321"],
+        origins: ["*"],
       },
       exposeHeaders: ["etag"],
       maxAgeSeconds: 3600,
@@ -262,7 +260,7 @@ const sharedBindings = {
 export const worker = await Astro("website", {
   adopt: isProductionStage,
   bindings: sharedBindings,
-  compatibilityDate: "2026-03-09",
+  compatibilityDate: "2026-04-14",
   compatibilityFlags: ["nodejs_als"],
   dev: {
     command: "astro dev --host 127.0.0.1 --port 4321",

@@ -2,6 +2,8 @@
 
 Tranzfer is a Cloudflare-native large-file transfer app built with Astro, SolidJS, Better Auth, Polar, D1, R2, and Alchemy.
 
+Deployed app: https://tranzfer-website-darjs.darjs.workers.dev
+
 ## Commands
 
 ```bash

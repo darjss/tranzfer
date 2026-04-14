@@ -1,14 +1,14 @@
-import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { Elysia } from "elysia";
-import { betterAuthPlugin } from "@/server/ctx/better-auth";
 import { cfBindings } from "@/server/ctx/cf-bindings";
 import { transferRoutes } from "@/server/routes/transfers";
 
 export const app = new Elysia({
-  adapter: CloudflareAdapter,
+  // Astro endpoints call Elysia through app.handle(request), not as the
+  // Worker entrypoint itself. Keep Elysia on the generic WinterTC path so
+  // Cloudflare doesn't try to JIT-compile handlers during route module import.
+  aot: false,
 })
   .use(cfBindings)
-  .use(betterAuthPlugin)
   .use(transferRoutes)
   .get("/", () => ({
     ok: true,
@@ -16,5 +16,4 @@ export const app = new Elysia({
   }))
   .get("/health", () => ({
     ok: true,
-  }))
-  .compile();
+  }));

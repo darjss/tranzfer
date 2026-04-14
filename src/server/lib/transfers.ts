@@ -1,4 +1,4 @@
-import { createId, init } from "@paralleldrive/cuid2";
+import { createId } from "@paralleldrive/cuid2";
 import { and, asc, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import {
   type TransferFileDescriptor,
@@ -11,10 +11,6 @@ import { PLAN_CATALOG, formatBytes } from "@/lib/billing/plans";
 import { getDb } from "@/server/db";
 import { transfer, transferDownloadEvent, transferFile } from "@/server/db/schema";
 import { getUserPlan } from "@/server/lib/entitlements";
-
-const slugId = init({
-  length: 10,
-});
 
 const ACTIVE_TRANSFER_STATUSES = ["draft", "uploading", "ready"] as const;
 
@@ -113,7 +109,7 @@ export async function createTransferDraft(userId: string, input: CreateTransferI
   }
 
   const nextTransferId = createId();
-  const slug = slugId();
+  const slug = createId().slice(0, 10);
   const expiresAt = getTransferExpiryDate();
 
   await db.insert(transfer).values({

@@ -1,8 +1,6 @@
-import { getRuntimeEnv } from "@/server/lib/runtime";
+import { env } from "cloudflare:workers";
 
 export function getBillingProductIds() {
-  const env = getRuntimeEnv();
-
   return {
     pro: env.POLAR_PRODUCT_PRO_ID || "",
   };

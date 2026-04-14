@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Elysia } from "elysia";
 import {
@@ -6,9 +5,9 @@ import {
   MULTIPART_PART_SIZE_BYTES,
   type TransferFileDescriptor,
 } from "@/lib/transfers";
-import { getSessionFromHeaders } from "@/server/lib/auth";
 import { getDb } from "@/server/db";
 import { transferFile } from "@/server/db/schema";
+import { getSessionFromHeaders } from "@/server/lib/auth";
 import {
   createTransferDraft,
   getTransferForOwner,
@@ -50,14 +49,21 @@ async function requireSession(headers: Headers) {
   return session;
 }
 
-function getHashedIp(headers: Headers) {
+async function getHashedIp(headers: Headers) {
   const ipAddress = headers.get("CF-Connecting-IP");
 
   if (!ipAddress) {
     return null;
   }
 
-  return crypto.createHash("sha256").update(ipAddress).digest("hex");
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(ipAddress),
+  );
+
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 async function buildUploadResponse(file: typeof transferFile.$inferSelect) {
@@ -156,7 +162,7 @@ async function handlePublicDownload(input: {
 
   await logDownloadEvent({
     fileId: file.id,
-    ipHash: getHashedIp(input.headers),
+    ipHash: await getHashedIp(input.headers),
     transferId: item.id,
     userAgent: input.headers.get("user-agent"),
   });

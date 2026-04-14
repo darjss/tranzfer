@@ -1,15 +1,13 @@
+import { env } from "cloudflare:workers";
 import { Elysia } from "elysia";
-import { getRuntimeEnv } from "@/server/lib/runtime";
 
 export const cfBindings = new Elysia({ name: "@[cf-bindings]" }).decorate(
   "cf",
   {
     get env() {
-      return getRuntimeEnv();
+      return env;
     },
     get bindings() {
-      const env = getRuntimeEnv();
-
       return {
         DB: env.DB,
         BUCKET: env.BUCKET,

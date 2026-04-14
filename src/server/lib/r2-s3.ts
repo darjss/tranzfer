@@ -1,6 +1,6 @@
+import { env } from "cloudflare:workers";
 import { AwsClient } from "aws4fetch";
 import { PRESIGNED_URL_TTL_SECONDS, SIGNED_DOWNLOAD_TTL_SECONDS } from "@/lib/transfers";
-import { getRuntimeEnv } from "@/server/lib/runtime";
 
 type MultipartPart = {
   etag: string;
@@ -8,8 +8,6 @@ type MultipartPart = {
 };
 
 function getAwsClient() {
-  const env = getRuntimeEnv();
-
   if (!env.R2_ACCESS_KEY_ID || !env.R2_SECRET_ACCESS_KEY) {
     throw new Error("Missing R2 API credentials.");
   }
@@ -24,8 +22,6 @@ function getAwsClient() {
 }
 
 function getBucketApiUrl(key = "") {
-  const env = getRuntimeEnv();
-
   if (!env.R2_ACCOUNT_ID || !env.R2_BUCKET_NAME) {
     throw new Error("Missing R2 bucket configuration.");
   }
