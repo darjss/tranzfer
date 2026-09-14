@@ -265,7 +265,6 @@ export const worker = await Astro("website", {
   dev: {
     command: "astro dev --host 127.0.0.1 --port 4321",
   },
-  domains: isProductionStage ? ["tranzfer.app"] : undefined,
   observability: {
     enabled: true,
   },
